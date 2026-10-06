@@ -50,6 +50,13 @@ jobs:
           set -o pipefail
           buildozer -v android debug 2>&1 | tee build.log
 
+      - name: List hasil build
+        if: always()
+        run: |
+          echo "=== root ==="; ls -la
+          echo "=== bin ==="; ls -la bin || true
+          echo "=== semua apk ==="; find .buildozer -name "*.apk" 2>/dev/null || true
+
       - name: Show error tail
         if: failure()
         run: |
@@ -63,8 +70,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: virusdetector-apk
-          path: bin/*.apk
-          retention-days: 14
+          path: |
+            bin/*.apk
+            .buildozer/android/platform/build-*/dists/*/bin/*.apk
+          if-no-files-found: error
 
       - name: Upload build log
         if: failure()

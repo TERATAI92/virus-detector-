@@ -1,74 +1,28 @@
-name: Build APK
+[app]
+title = Virus Detector
+package.name = virusdetector
+package.domain = org.example.virusdetector
 
-on:
-  push:
-  workflow_dispatch:
+source.dir = .
+source.include_exts = py,png,jpg,kv,atlas,yar,json,txt
 
-jobs:
-  build:
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+version = 0.1
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+requirements = python3,kivy,requests,certifi,pyjnius,android
 
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
+orientation = portrait
+fullscreen = 0
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            zip unzip libltdl-dev cmake \
-            autoconf automake libtool pkg-config \
-            libncurses5 libtinfo5
+android.permissions = INTERNET,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE
 
-      - name: Install Buildozer
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install buildozer==1.6.0 cython==0.29.36
+android.api = 33
+android.minapi = 21
+android.archs = arm64-v8a, armeabi-v7a
 
-      - name: Prepare stable python-for-android 2024.1.21
-        run: |
-          python -m pip download python-for-android==2024.1.21 \
-            --no-binary :all: --no-deps -d /tmp/p4a
-          sudo mkdir -p /opt/p4a-stable
-          sudo tar -xzf /tmp/p4a/python-for-android-2024.1.21.tar.gz \
-            -C /opt/p4a-stable --strip-components=1
-          sudo chown -R runner:runner /opt/p4a-stable
-          ls /opt/p4a-stable
+p4a.source_dir = /opt/p4a-stable
 
-      - name: Build APK
-        run: |
-          set -o pipefail
-          buildozer -v android debug 2>&1 | tee build.log
+android.accept_sdk_license = True
 
-      - name: Show error tail
-        if: failure()
-        run: |
-          echo "=========== 60 BARIS TERAKHIR ==========="
-          tail -n 60 build.log
-          echo "=========== BARIS ERROR ==========="
-          grep -i -n "error" build.log | tail -n 30
-
-      - name: Upload APK
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: virusdetector-apk
-          path: bin/*.apk
-          retention-days: 14
-
-      - name: Upload build log
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log
-          path: build.log
+[buildozer]
+log_level = 2
+warn_on_root = 0

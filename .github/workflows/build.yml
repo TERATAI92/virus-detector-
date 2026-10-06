@@ -6,8 +6,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,23 +27,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             zip unzip libltdl-dev cmake \
-            autoconf automake libtool pkg-config
+            autoconf automake libtool pkg-config \
+            libncurses5 libtinfo5
 
       - name: Install Buildozer
         run: python -m pip install --upgrade pip buildozer cython
-
-      - name: Pin python-for-android ke rilis stabil
-        run: |
-          mkdir -p .buildozer/android/platform
-          git clone --branch 2024.1.21 --depth 1 \
-            https://github.com/kivy/python-for-android \
-            .buildozer/android/platform/python-for-android
 
       - name: Build APK
         run: buildozer -v android debug
 
       - name: Upload APK
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: virusdetector-apk

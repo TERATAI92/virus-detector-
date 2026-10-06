@@ -1,5 +1,7 @@
 import os
+import sys
 import threading
+import traceback
 
 from kivy.app import App
 from kivy.core.window import Window
@@ -30,6 +32,53 @@ if platform == 'android':
         ])
     except Exception:
         pass
+
+
+# ---------- pelapor crash ----------
+def _crash_paths():
+    paths = [os.path.join(os.getcwd(), 'crash.log')]
+    try:
+        app = App.get_running_app()
+        if app and getattr(app, 'user_data_dir', None):
+            paths.append(os.path.join(app.user_data_dir, 'crash.log'))
+    except Exception:
+        pass
+    return paths
+
+
+def _dump_crash(title):
+    text = title + '\n' + traceback.format_exc()
+    for p in _crash_paths():
+        try:
+            with open(p, 'w') as f:
+                f.write(text)
+        except Exception:
+            pass
+    return text
+
+
+def _error_screen(text):
+    lb = Label(
+        text=text,
+        size_hint=(1, None),
+        halign='left', valign='top',
+        font_size=dp(12),
+        color=(1.0, 0.35, 0.35, 1),
+        padding=[dp(8), dp(8)],
+    )
+    lb.bind(texture_size=lambda i, v: setattr(i, 'height', v[1]))
+    lb.bind(width=lambda i, v: setattr(i, 'text_size', (v, None)))
+    sv = ScrollView(do_scroll_y=True)
+    sv.add_widget(lb)
+    return sv
+
+
+def _excepthook(etype, value, tb):
+    _dump_crash('UNCAUGHT EXCEPTION')
+    sys.__excepthook__(etype, value, tb)
+
+
+sys.excepthook = _excepthook
 
 KV = '''
 <Card>:
@@ -373,8 +422,20 @@ class VirusDetectorUI(BoxLayout):
 
 class VirusDetectorApp(App):
     def build(self):
-        return VirusDetectorUI()
+        try:
+            return VirusDetectorUI()
+        except Exception:
+            text = _dump_crash('CRASH SAAT MEMBANGUN UI')
+            return _error_screen(text)
 
 
 if __name__ == '__main__':
-    VirusDetectorApp().run()
+    try:
+        VirusDetectorApp().run()
+    except Exception:
+        text = _dump_crash('CRASH SAAT STARTUP')
+        try:
+            from kivy.base import runTouchApp
+            runTouchApp(_error_screen(text))
+        except Exception:
+            pass

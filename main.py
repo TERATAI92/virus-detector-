@@ -56,7 +56,7 @@ KV = '''
     background_down: ''
     canvas.before:
         Color:
-            rgba: self.bg_color if self.state == 'normal' else self.bg_color_down
+            rgba: self.bg_color
         RoundedRectangle:
             pos: self.pos
             size: self.size
@@ -108,7 +108,7 @@ KV = '''
             rgba: self.bar_color
         RoundedRectangle:
             pos: self.pos
-            size: (max(self.width * self.score / 100.0, dp(12)) if self.score > 0 else 0, self.height)
+            size: (self.fill_w, self.height)
             radius: [dp(6)]
 '''
 
@@ -120,8 +120,16 @@ class Card(BoxLayout):
 
 
 class AccentButton(Button):
+    normal_color = ListProperty([0.16, 0.45, 0.85, 1])
+    press_color = ListProperty([0.12, 0.35, 0.70, 1])
     bg_color = ListProperty([0.16, 0.45, 0.85, 1])
-    bg_color_down = ListProperty([0.12, 0.35, 0.70, 1])
+
+    def on_state(self, inst, state):
+        self.bg_color = self.press_color if state == 'down' else self.normal_color
+
+    def on_normal_color(self, inst, val):
+        if self.state == 'normal':
+            self.bg_color = val
 
 
 class StyledInput(TextInput):
@@ -135,6 +143,15 @@ class VerdictBanner(Label):
 class ScoreGauge(Widget):
     score = NumericProperty(0)
     bar_color = ListProperty([0.35, 0.88, 0.72, 1])
+    fill_w = NumericProperty(0)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.bind(score=self._upd, width=self._upd)
+
+    def _upd(self, *args):
+        s = min(max(self.score, 0), 100)
+        self.fill_w = self.width * s / 100.0
 
 
 def verdict_hex(v):
@@ -174,11 +191,11 @@ class VirusDetectorUI(BoxLayout):
 
         row_btn = BoxLayout(size_hint_y=None, height=dp(46), spacing=dp(8))
         btn_pick = AccentButton(text='PILIH FILE',
-                                bg_color=[0.23, 0.29, 0.40, 1],
-                                bg_color_down=[0.18, 0.23, 0.32, 1])
+                                normal_color=[0.23, 0.29, 0.40, 1],
+                                press_color=[0.18, 0.23, 0.32, 1])
         btn_eicar = AccentButton(text='BUAT EICAR',
-                                 bg_color=[0.50, 0.38, 0.12, 1],
-                                 bg_color_down=[0.40, 0.30, 0.09, 1])
+                                 normal_color=[0.50, 0.38, 0.12, 1],
+                                 press_color=[0.40, 0.30, 0.09, 1])
         btn_pick.bind(on_press=self.pick_file)
         btn_eicar.bind(on_press=self.make_eicar)
         row_btn.add_widget(btn_pick)
@@ -189,8 +206,8 @@ class VirusDetectorUI(BoxLayout):
         self.vtkey = StyledInput(hint_text='VirusTotal API key (opsional)', password=True)
         card_scan.add_widget(self.vtkey)
         self.btn_scan = AccentButton(text='SCAN SEKARANG',
-                                     bg_color=[0.13, 0.55, 0.42, 1],
-                                     bg_color_down=[0.10, 0.44, 0.34, 1])
+                                     normal_color=[0.13, 0.55, 0.42, 1],
+                                     press_color=[0.10, 0.44, 0.34, 1])
         self.btn_scan.bind(on_press=self.start_scan)
         card_scan.add_widget(self.btn_scan)
 
@@ -230,7 +247,6 @@ class VirusDetectorUI(BoxLayout):
         self._anim = None
         self._popup = None
 
-    # ---------- aksi ----------
     def pick_file(self, *args):
         start = '/sdcard' if os.path.isdir('/sdcard') else os.getcwd()
         self._popup = FileChooserPopup(path=start, size_hint=(0.95, 0.85))
@@ -285,7 +301,6 @@ class VirusDetectorUI(BoxLayout):
             res = {'file': path, 'error': str(e)}
         Clock.schedule_once(lambda dt, r=res: self._finish(r), 0)
 
-    # ---------- tampilan hasil ----------
     def _finish(self, res):
         if self._anim:
             self._anim.stop(self.banner)
